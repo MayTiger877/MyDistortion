@@ -173,7 +173,10 @@ void MyDistortionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, numSampels);
 
     float drySample = 0, exponant = 0, toDistort = 0, sign = 0, magic = 0;
-    float drive = myDistDrive / 100;
+    
+    const float drive = jmax(0.f, std::min(1.f, myDistDrive));
+    const float range = jmax(1.f, myDistMysteryMagic);
+
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
@@ -187,18 +190,35 @@ void MyDistortionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 //exponant = expf(toDistort * drive);
                 //toDistort = (1 - exponant) * sign;
                 //channelData[sample] = ((drySample * myDistMixDry) + (toDistort * myDistMixWet)) * myDistOut;
-                ///////////////////////////////////////////////////////////////////////////////////////////////////////
-                drySample = toDistort * myDistIn;
-                toDistort = toDistort * (1 + drive);
-                if (toDistort >= 0.5)
-                    channelData[sample] = 0.5;
-                if (toDistort <= -0.5)
-                    channelData[sample] = -0.5;
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                //drySample = toDistort * myDistIn;
+                //toDistort = toDistort * (1 + drive);
+                //if (toDistort >= 0.5)
+                //    channelData[sample] = 0.5;
+                //if (toDistort <= -0.5)
+                //    channelData[sample] = -0.5;
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                float clippedInput = tanh(channelData[sample] * drive * range) / tanh(drive * range);
+                channelData[sample] = (myDistMixDry * channelData[sample]) + (myDistMixWet * clippedInput);
             }
         }
         
     }
 }
+
+
+
+//In this example, we have added three parameters to our distortion effect : drive, mix, and range.
+//drive controls the amount of distortion applied to the signal, with a range of 0 to 1. mix controls the mix between the 
+//original signal and the distorted signal, with a range of 0 to 1. range controls the range of the soft clipping function, with a range of 1 or greater.
+//We then apply a soft clipping function to the input signal using the std::tanh function, which is a common way to implement distortion
+//effects.We use the driveand range parameters to control the shapeand intensity of the clipping.
+//Finally, we mix the clipped signal with the original signal using the mix parameter, and write the resulting output to the output buffer.
+//Note that in order to use this example in your own JUCE project, you will need to defineand initialize the driveParam, mixParam, and rangeParam variables, 
+//which should be instances of juce::AudioParameterFloat.
+
+
+
 
 //==============================================================================
 bool MyDistortionAudioProcessor::hasEditor() const
